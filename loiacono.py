@@ -33,7 +33,7 @@ def loiacono(y, subdivisionOfSemitone=4.0, midistart=0, midiend=110, sr=44100):
 
 # import the file to be assessed
 y, sr = librosa.load("LDFlute_susvib_C4_v1_2.wav", sr=None)
-subdivisionOfSemitone = 1
+subdivisionOfSemitone = 4
 # y = y*get_window(window="hamming", Nx=len(y))
 midistart = 20
 midiend = 200
@@ -95,7 +95,7 @@ notes = np.correlate(absresult, notePattern, mode="valid")
 # notes = np.append(np.zeros(int(len(notePattern)/2)), notes)
 notes = np.append(notes, np.zeros(int(len(notePattern)-1)))
 
-selectedNote = midistart+np.argmax(notes)
+selectedNote = midistart+np.argmax(notes)/subdivisionOfSemitone
 print("selectedNote " + str(selectedNote))
 print("expected " + str([selectedNote + h for h in hnotes]))
 
