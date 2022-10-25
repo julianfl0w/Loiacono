@@ -42,7 +42,8 @@ midiIndices, result = loiacono(
     y, midistart=midistart, midiend=midiend,subdivisionOfSemitone=subdivisionOfSemitone, sr=sr
 )
 
-# determine the note(s) present
+# create the note pattern
+# only need to do this once
 notePattern = np.zeros(50 * subdivisionOfSemitone)
 zerothFreq = note2Freq(0)
 hnotes = []
@@ -56,43 +57,9 @@ for harmonic in range(1, 5):
         hnotes += [hnote]
         notePattern[int(hnote)] = 1 - (hnote % 1)
         notePattern[int(hnote) + 1] = hnote % 1
-# notePattern = np.convolve(notePattern, get_window(window="hamming", Nx=5), mode="same")
-# compressed = np.absolute(result)
-thresh = 0.2
-# factor = 0.03
-# for i in range(len(compressed)):
-#    if compressed[i] > thresh:
-#        compressed[i] = thresh + (compressed[i] - thresh)*factor
-peaks, properties = find_peaks(
-    np.absolute(result), threshold=0.5, distance=2 * subdivisionOfSemitone
-)
-compressed = np.zeros(np.shape(np.absolute(result)))
-for i in peaks:
-    compressed[int(i)] = 1
 
-# compressedNew = compressed.copy()
-# compressedNew += np.roll(compressed,-1)
-# compressedNew += np.roll(compressed,1)
-# compressed = compressedNew
-
-absresult = np.absolute(result)
-print(peaks)
-
-peak_sum_max = 0
-selectedNote = 0
-for p in peaks:
-    peak_sum = 0
-    for o in hnotes:
-        if round(p + o) < len(absresult):
-            peak_sum += absresult[round(p + o)]
-    if peak_sum > peak_sum_max:
-        peak_sum_max = peak_sum
-        selectedNote = p
-
-# compressed[compressed<thresh] = 0
-# compressed[compressed>=thresh] = 1
+        
 notes = np.correlate(absresult, notePattern, mode="valid")
-# notes = np.append(np.zeros(int(len(notePattern)/2)), notes)
 notes = np.append(notes, np.zeros(int(len(notePattern)-1)))
 
 selectedNote = midistart+np.argmax(notes)/subdivisionOfSemitone
@@ -105,6 +72,5 @@ fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
 ax1.plot(notePattern)
 ax2.plot(midiIndices, np.absolute(result))
 ax3.plot(midiIndices, notes)
-ax4.plot(compressed)
 # plt.plot(midiIndices, np.absolute(result))
 plt.show()
