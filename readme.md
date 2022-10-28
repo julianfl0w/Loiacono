@@ -5,5 +5,15 @@ The Loiacono Transform modifies the Discrete Time Fourier Transform such that th
 The Loiacono Transform finds primary application in music analysis. It was developed for use in a vocoder. 
 
 **Mathematical Definition**
+Function f(x) = 440*2**((x−69)/12)
 
-$$X(i) = \sum_{k=1}^n a_k b_k $$
+let p = 1000
+s = 
+\textbf{ω} = f(m), m = {0,1,2...p}
+
+Let y be an audio signal of length n. Then the Loiacono Transform is defined as:
+L(y, ω) = X(ω)
+For ω in \textbf{ω} 
+
+Where the DTFT is defined as
+$$X(ω) = \sum_{n=-∞}^∞ x[n]e^{-iωn} $$
