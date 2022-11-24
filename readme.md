@@ -5,15 +5,92 @@ The Loiacono Transform modifies the Discrete Time Fourier Transform such that th
 The Loiacono Transform finds primary application in music analysis. It was developed for use in a vocoder. 
 
 **Mathematical Definition**
-Function f(x) = 440*2**((x−69)/12)
 
-let p = 1000
-s = 
-\textbf{ω} = f(m), m = {0,1,2...p}
+$$L(f') = x \cdot T_r  + x \cdot T_i $$
 
-Let y be an audio signal of length n. Then the Loiacono Transform is defined as:
-L(y, ω) = X(ω)
-For ω in \textbf{ω} 
+where x is the signal, T is defined below
 
+**Derivation** 
 Where the DTFT is defined as
 $$X(ω) = \sum_{n=-∞}^∞ x[n]e^{-iωn} $$
+
+The DFT applies the DTFT over a bounded time, provides the result in integer multiples k of a base frequency, and keeps a consistant length N across frequency calculations
+$$X(k) = \sum_{n=0}^{N-1} x[n]e^{\frac{-i2\pi}{N}kn} $$
+
+As an alternative to the DFT, the Loiacono transform selects frequencies that are evenly spaced in log space. This is of greater utility in music processing. Futhermore, the computation length for each frequency is an integer multiple m of the corresponding period. This causes even binning and response time across the frequency spectrum. Units of normalized frequency (or "cycles per sample") f' are used, because they are found to be much easier and more intuitive in implementation. Period p' ("samples per cycle") is given as 1/f'. 
+$$L(f') = \sum_{n=0}^{p'm} x[n]e^{-i2\pi f' n} $$
+
+Applying Euler's formula, this can be expressed in terms of real values
+$$L(f') = \sum_{n=0}^{p'm} x[n][\cos({2\pi f' n}) - i\sin ({2\pi f' n})] $$
+
+We can precompute the latter part of the expression as "twiddle factors" T, where 
+
+$$
+\begin{equation}
+T(f',n) = 
+    \begin{array}{lr}
+        cos({2\pi f' n}) - i\sin ({2\pi f' n}), & \text{if } n < p'm \\
+        0, & \text{if } n >= p'm
+    \end{array}
+\end{equation}
+$$
+
+Zeros are introduced to the array to keep all arrays of equal length, which makes computation much easier for the programmer. 
+
+Now the Loiacono transform can be expressed more simply as 
+$$L(f') = \sum_{n=0}^{p'm} x[n]T(f',n)$$
+
+For convenience, we separate the real and imaginary values of T
+
+$$
+\begin{equation}
+T_r(f',n) = 
+    \begin{array}{lr}
+        cos({2\pi f' n}), & \text{if } n < p'm \\
+        0, & \text{if } n >= p'm
+    \end{array}
+\end{equation}
+$$
+
+$$
+\begin{equation}
+T_i(f',n) = 
+    \begin{array}{lr}
+        -\sin ({2\pi f' n}), & \text{if } n < p'm \\
+        0, & \text{if } n >= p'm
+    \end{array}
+\end{equation}
+$$
+
+Now the two axes of the Loiacono transform can be specified as
+
+$$L_r(f') = \sum_{n=0}^{p'm} x[n]T_r(f',n)$$
+
+$$L_i(f') = \sum_{n=0}^{p'm} x[n]T_i(f',n)$$
+
+Or, as a simple dot product 
+
+$$L_r(f') = x \cdot T_r $$
+
+$$L_i(f') = x \cdot T_i $$
+
+
+Therefore, the target phase and magnitude of each frequency are
+
+$$ angle(L_r, L_i) $$ 
+
+and 
+
+$$ |L_r+L_i| $$
+
+For musical considerations, we define the range of f' to be 
+
+f' = [A*2**((NOTE-69)/12)/SAMPLE_FREQUENCY for NOTE in MIDIINDICES]
+
+where, for example A = 440 Hz, SAMPLE_FREQUENCY = 48 kHz
+MIDIINDICES may be 
+1,2,3... 128
+or may be more fine, ex. 
+0.5, 1.0, 1.5, 2.0 ... 128
+
+You can select any set you want! The above is even in log-space. 
