@@ -11,6 +11,7 @@ $$L(f') = x \cdot T_r  + x \cdot T_i $$
 where x is the signal, T is defined below
 
 **Derivation** 
+
 Where the DTFT is defined as
 $$X(ω) = \sum_{n=-∞}^∞ x[n]e^{-iωn} $$
 
