@@ -4,7 +4,38 @@ The Loiacono Transform modifies the Discrete Time Fourier Transform such that th
 
 The Loiacono Transform finds primary application in music analysis. It was developed for use in a vocoder. 
 
+**Advantages**
+
+The Loiacono transform is good for distinct harmonic analysis
+
+```
+# load the wav file
+y, sr = librosa.load("ahhD3.wav", sr=None)
+# generate a Loiacono based on this SR
+linst = Loiacono(
+    sr=sr, midistart=30, midiend=128, subdivisionOfSemitone=2.0, multiple=80
+)
+# get a section in the middle of sample for processing
+y = y[int(len(y) / 2) : int(len(y) / 2 + linst.DTFTLEN)]
+linst.run(y)
+print(linst.selectedNote)
+linst.plot()
+```
+
+The above code yields
+
+![image](https://user-images.githubusercontent.com/8158655/203856756-1ff0fe31-5c17-4ce4-b0fb-da9e55a5ffc2.png)
+
+And returns the correctly identified note number, 50, or D3
+
+By running "python whiteNoiseTest", you can see that the resultant spectrum is flat against white noise (after a square root adjustment)
+
+![image](https://user-images.githubusercontent.com/8158655/203856338-a5f5fa8e-e37f-428f-8947-d8e420fcf18e.png)
+
+
 **Mathematical Definition**
+
+The Loiacono Transform is defined as
 
 $$L(f') = x \cdot T_r  + x \cdot T_i $$
 
