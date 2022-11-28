@@ -47,7 +47,7 @@ class Loiacono:
         baseL2 = np.log2(multiple / lowestNoteNormalizedFreq)
         baseL2 = np.ceil(baseL2)
         #print(baseL2)
-        self.DTFTLEN = 2 ** baseL2
+        self.DTFTLEN = int(2 ** baseL2)
         #print(self.DTFTLEN)
         self.SAMPLE_FREQUENCY = sr
         midilen = midiend - midistart
@@ -64,22 +64,24 @@ class Loiacono:
 
     def getTwittleFactors(self, multiple):
         self.N = np.arange(self.DTFTLEN)
-        self.WUnity = [
+        self.normalizedFrequency = [
             note2Freq(note) / self.SAMPLE_FREQUENCY for note in self.midiIndices
         ]
-        self.W = np.array([2 * np.pi * w for w in self.WUnity])
+        self.W = np.array([2 * np.pi * w for w in self.normalizedFrequency])
 
         self.WN = np.dot(np.expand_dims(self.W, 1), np.expand_dims(self.N, 0))
         self.EIWN = np.exp(-1j * self.WN)
 
         # each dtftlen should be an integer multiple of its period
-        for i, wu in enumerate(self.WUnity):
-            dftlen = multiple / wu
+        for i, fprime in enumerate(self.normalizedFrequency):
+            dftlen = multiple / fprime
+            # set zeros before the desired period (a multiple of pprime)
             self.EIWN[i, : int(self.DTFTLEN - dftlen)] = np.array([0])
-            # self.EIWN[i,:] /= dftlen
-            self.EIWN[i, int(self.DTFTLEN - dftlen) :] *= get_window(
-                "hann", len(self.EIWN[i, int(self.DTFTLEN - dftlen) :])
-            )
+            self.EIWN[i,:] /= dftlen**(1/2)
+            
+            #self.EIWN[i, int(self.DTFTLEN - dftlen) :] *= get_window(
+            #    "hann", len(self.EIWN[i, int(self.DTFTLEN - dftlen) :])
+            #)
 
     # function to generate note detection pattern
     def getHarmonicPattern(self):
@@ -128,6 +130,7 @@ class Loiacono:
         fig, ((ax1)) = plt.subplots(1, 1)
 
         ax1.plot(self.midiIndices, self.absresult)
+        #ax1.axis(ymin=0, ymax=max(self.absresult) + 1)
         # ax4.plot(self.auto)
         # plt.plot(midiIndices, np.absolute(result))
         plt.show()
@@ -145,8 +148,9 @@ class Loiacono:
                 self.lpf = inertia * self.lpf + (1 - inertia) * self.absresult
 
         # using tuple unpacking for multiple Axes
-        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
+        fig, ((ax1)) = plt.subplots(1, 1)
         ax1.plot(self.lpf)
+        ax1.axis(ymin=0, ymax=max(self.lpf) + 1)
         plt.show()
 
     def squareTest(self):
@@ -159,12 +163,19 @@ class Loiacono:
 
 if __name__ == "__main__":
 
-    infile = sys.argv[1]
+    if sys.argv[1] == "whiteNoiseTest":
+        linst = Loiacono(
+            sr=48000, midistart=30, midiend=128, subdivisionOfSemitone=2.0, multiple=80
+        )
+        linst.whiteNoiseTest()
+
+    else:
+        infile = sys.argv[1]
     # load the wav file
     y, sr = librosa.load(infile, sr=None)
     # generate a Loiacono based on this SR
     linst = Loiacono(
-        sr=sr, midistart=30, midiend=128, subdivisionOfSemitone=2.0, multiple=200
+        sr=sr, midistart=30, midiend=128, subdivisionOfSemitone=2.0, multiple=80
     )
     # get a section in the middle of sample for processing
     y = y[int(len(y) / 2) : int(len(y) / 2 + linst.DTFTLEN)]
