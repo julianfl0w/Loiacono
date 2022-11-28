@@ -34,8 +34,8 @@ for n = 0,1,2...len(x)
 
 ## Introduction
 
-The Loiacono Transform makes the following improvements on the Discrete Time Fourier Transform:
-1. An arbitrary list of frequencies can be measured. In DTFT, you get all integer multiples of 1Hz, whether you want them or not
+The Loiacono Transform makes the following improvements on the Discrete Fourier Transform:
+1. An arbitrary list of frequencies can be measured. In DFT, you get all integer multiples of 1Hz, whether you want them or not
 2. Measurement results are scaled such that binning and amplitude of each result is even across frequency
 3. The Loiacono Transform is defined in terms of real values. No Euler's relation, no complex numbers, no problem. 
 4. The Loiacono Transform is defined in terms of normalized frequency f'. No radians, no problem. 
