@@ -57,7 +57,7 @@ $$
 \begin{equation}
 T_r(f',m) = 
     \begin{array}{lr}
-        cos({2\pi f' n}), & \text{if } n < p'm \\
+        \cos({2\pi f' n}), & \text{if } n < p'm \\
         0, & otherwise
     \end{array}
 \end{equation}
