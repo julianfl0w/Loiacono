@@ -1,6 +1,18 @@
 **The Loiacono Transform**
 
-The Loiacono Transform modifies the Discrete Time Fourier Transform such that the frequency bins span 12-Tone Equal Temperment (TET) evenly. For example, each note (A, A#, B...) may be analyzed as 100 cents. This is opposed to the Discrete Fourier Transform (DFT), which is evenly spaced across frequency, thereby giving substantially lower resolution for notes of lower pitch. The Loiacono Transform is necessarily slower than the Fast Fourier Transform (FFT) (the standard implementation of the DFT), but this disadvantage is offset by modern hardware.
+The Loiacono Transform makes the following improvements on the Discrete Time Fourier Transform:
+1. An arbitrary list of frequencies can be measured. In DTFT, you get all integer multiples of 1Hz, whether you want them or not
+2. Measurement results are scaled such that binning and amplitude of each result is even across frequency
+3. The Loiacono Transform is defined in terms of real values. No Euler's relation, no complex numbers, no problem. 
+4. The Loiacono Transform is defined in terms of normalized frequency f'. No radians, no problem. 
+5. The Loiacono Transform has been simplified to a sum of dot products
+
+With a single disadvantage:
+1. You can't use the FFT. 
+
+For many use cases, this is a non-issue, expecially when using Graphics Processing Unit (GPU) for Digital Signal Processing (DSP). 
+
+The Loiacono Transform was developed for use in music analysis. In this configuration, the frequencies f' are chosen such that the frequency bins span 12-Tone Equal Temperment (TET) evenly. For example, each note (A, A#, B...) may be analyzed as 100 cents. This is opposed to the Discrete Fourier Transform (DFT), which is evenly spaced across frequency, thereby giving substantially lower resolution for notes of lower pitch. The Loiacono Transform is necessarily slower than the Fast Fourier Transform (FFT) (the standard implementation of the DFT), but this disadvantage is offset by modern hardware.
 
 The Loiacono Transform finds primary application in music analysis. It was developed for use in a vocoder. 
 
