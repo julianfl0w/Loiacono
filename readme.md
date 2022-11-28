@@ -37,9 +37,33 @@ By running "python whiteNoiseTest", you can see that the resultant spectrum is f
 
 The Loiacono Transform is defined as
 
-$$L(f') = x \cdot T_r  + x \cdot T_i $$
+$$L(f', x, m) = x \cdot T_r(f', m)  + x \cdot T_i(f', m) $$
 
-where x is the signal, T is defined below
+where x is the signal, m is how many periods of each frequency are considered, and
+
+$$
+\begin{equation}
+T_r(f',m) = 
+    \begin{array}{lr}
+        cos({2\pi f' n}), & \text{if } n < p'm \\
+        0, & otherwise
+    \end{array}
+\end{equation}
+$$
+
+$$
+\begin{equation}
+T_i(f',m) = 
+    \begin{array}{lr}
+        -\sin ({2\pi f' n}), & \text{if } n < p'm \\
+        0, & otherwise
+    \end{array}
+\end{equation}
+$$
+
+where p' = 1/f'
+
+for n = 0,1,2...len(x)
 
 **Derivation** 
 
@@ -62,7 +86,7 @@ $$
 T(f',n) = 
     \begin{array}{lr}
         cos({2\pi f' n}) - i\sin ({2\pi f' n}), & \text{if } n < p'm \\
-        0, & \text{if } n >= p'm
+        0, & otherwise
     \end{array}
 \end{equation}
 $$
@@ -79,7 +103,7 @@ $$
 T_r(f',n) = 
     \begin{array}{lr}
         cos({2\pi f' n}), & \text{if } n < p'm \\
-        0, & \text{if } n >= p'm
+        0, & otherwise
     \end{array}
 \end{equation}
 $$
@@ -89,7 +113,7 @@ $$
 T_i(f',n) = 
     \begin{array}{lr}
         -\sin ({2\pi f' n}), & \text{if } n < p'm \\
-        0, & \text{if } n >= p'm
+        0, & otherwise
     \end{array}
 \end{equation}
 $$
