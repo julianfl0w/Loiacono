@@ -1,5 +1,39 @@
 **The Loiacono Transform**
 
+**Definition**
+
+The Loiacono Transform is defined as
+
+$$L(f', x, m) = x \cdot T_r(f', m)  + x \cdot T_i(f', m) $$
+
+where x is the signal, m is how many periods of each frequency are considered, and
+
+$$
+\begin{equation}
+T_r(f',m) = 
+    \begin{array}{lr}
+        \cos({2\pi f' n}), & \text{if } n < p'm \\
+        0, & otherwise
+    \end{array}
+\end{equation}
+$$
+
+$$
+\begin{equation}
+T_i(f',m) = 
+    \begin{array}{lr}
+        -\sin ({2\pi f' n}), & \text{if } n < p'm \\
+        0, & otherwise
+    \end{array}
+\end{equation}
+$$
+
+where p' = 1/f'
+
+for n = 0,1,2...len(x)
+
+**Introduction**
+
 The Loiacono Transform makes the following improvements on the Discrete Time Fourier Transform:
 1. An arbitrary list of frequencies can be measured. In DTFT, you get all integer multiples of 1Hz, whether you want them or not
 2. Measurement results are scaled such that binning and amplitude of each result is even across frequency
@@ -44,38 +78,6 @@ By running "python whiteNoiseTest", you can see that the resultant spectrum is f
 
 ![image](https://user-images.githubusercontent.com/8158655/203856338-a5f5fa8e-e37f-428f-8947-d8e420fcf18e.png)
 
-
-**Mathematical Definition**
-
-The Loiacono Transform is defined as
-
-$$L(f', x, m) = x \cdot T_r(f', m)  + x \cdot T_i(f', m) $$
-
-where x is the signal, m is how many periods of each frequency are considered, and
-
-$$
-\begin{equation}
-T_r(f',m) = 
-    \begin{array}{lr}
-        \cos({2\pi f' n}), & \text{if } n < p'm \\
-        0, & otherwise
-    \end{array}
-\end{equation}
-$$
-
-$$
-\begin{equation}
-T_i(f',m) = 
-    \begin{array}{lr}
-        -\sin ({2\pi f' n}), & \text{if } n < p'm \\
-        0, & otherwise
-    \end{array}
-\end{equation}
-$$
-
-where p' = 1/f'
-
-for n = 0,1,2...len(x)
 
 **Derivation** 
 
