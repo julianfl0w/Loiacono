@@ -32,7 +32,7 @@ where p' = 1/f'
 
 for n = 0,1,2...len(x)
 
-##Introduction
+## Introduction
 
 The Loiacono Transform makes the following improvements on the Discrete Time Fourier Transform:
 1. An arbitrary list of frequencies can be measured. In DTFT, you get all integer multiples of 1Hz, whether you want them or not
@@ -50,7 +50,7 @@ The Loiacono Transform was developed for use in music analysis. In this configur
 
 The Loiacono Transform finds primary application in music analysis. It was developed for use in a vocoder. 
 
-## Advantages
+## Examples
 
 The Loiacono transform is good for distinct harmonic analysis
 
