@@ -1,6 +1,6 @@
-**The Loiacono Transform**
+#The Loiacono Transform
 
-**Definition**
+##Definition
 
 The Loiacono Transform is defined as
 
@@ -32,7 +32,7 @@ where p' = 1/f'
 
 for n = 0,1,2...len(x)
 
-**Introduction**
+##Introduction
 
 The Loiacono Transform makes the following improvements on the Discrete Time Fourier Transform:
 1. An arbitrary list of frequencies can be measured. In DTFT, you get all integer multiples of 1Hz, whether you want them or not
@@ -50,7 +50,7 @@ The Loiacono Transform was developed for use in music analysis. In this configur
 
 The Loiacono Transform finds primary application in music analysis. It was developed for use in a vocoder. 
 
-**Advantages**
+##Advantages
 
 The Loiacono transform is good for distinct harmonic analysis
 
@@ -79,7 +79,7 @@ By running "python whiteNoiseTest", you can see that the resultant spectrum is f
 ![image](https://user-images.githubusercontent.com/8158655/203856338-a5f5fa8e-e37f-428f-8947-d8e420fcf18e.png)
 
 
-**Derivation** 
+##Derivation
 
 Where the DTFT is defined as
 $$X(ω) = \sum_{n=-∞}^∞ x[n]e^{-iωn} $$
