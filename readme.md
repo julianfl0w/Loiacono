@@ -6,9 +6,9 @@ The Loiacono Transform is defined as
 
 $$L_{mag}(f', x, m) = |x \cdot T_r(f', m), x \cdot T_i(f', m)| $$
 
-$$L_{arg}(f', x, m) = angle( x \cdot T_r(f', m), x \cdot T_i(f', m)) $$
+where x is the signal, m is how many periods of each frequency are considered
 
-where x is the signal, m is how many periods of each frequency are considered, and
+the phase angle is ignored because it's not important for my uses
 
 $$
 \begin{equation}
