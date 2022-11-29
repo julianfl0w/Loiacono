@@ -2,7 +2,6 @@ import os
 import sys
 import pkg_resources
 import time
-
 here = os.path.dirname(os.path.abspath(__file__))
 if "vulkanese" not in [pkg.key for pkg in pkg_resources.working_set]:
     sys.path = [os.path.join(here, "..", "vulkanese", "vulkanese")] + sys.path
@@ -16,14 +15,10 @@ from loiacono import *
 class Loiacono_GPU(ComputeShader, Loiacono):
     def __init__(
         self,
-        instance,
         device,
         signalLength,
         fprime,
-        m, 
-        midistart=30,
-        midiend=110,
-        subdivisionOfSemitone=4.0,
+        multiple, 
         constantsDict = {},
         DEBUG=False,
         buffType="float",
@@ -34,7 +29,7 @@ class Loiacono_GPU(ComputeShader, Loiacono):
     ):
 
         self.midiRange = midiend-midistart
-        constantsDict["m"] = m
+        constantsDict["multiple"] = multiple
         constantsDict["SIGNAL_LENGTH"] = signalLength
         constantsDict["PROCTYPE"] = buffType
         constantsDict["LG_WG_SIZE"] = 7
@@ -42,12 +37,9 @@ class Loiacono_GPU(ComputeShader, Loiacono):
         constantsDict["THREADS_PER_WORKGROUP"] = 1 << constantsDict["LG_WG_SIZE"]
         self.dim2index = {}
         
-        self.subdivisionOfSemitone = subdivisionOfSemitone
-        self.midistart=midistart,
-        self.midiend=midiend,
 
         # device selection and instantiation
-        self.instance = instance
+        self.instance = device.instance
         self.device = device
         self.constantsDict = constantsDict
         self.subgroupSize = 32
@@ -61,7 +53,7 @@ class Loiacono_GPU(ComputeShader, Loiacono):
                 name="x",
                 memtype=buffType,
                 qualifier="readonly",
-                dimensionVals=signalLength,
+                dimensionVals=2**15, # always 32**3
                 memProperties=memProperties,
             ),
             StorageBuffer(
@@ -76,13 +68,13 @@ class Loiacono_GPU(ComputeShader, Loiacono):
                 memtype=buffType,
                 dimensionVals=[len(fprime), self.subgroupSize**2],
             ),
-            DebugBuffer(
+            StorageBuffer(
                 device=self.device,
                 name="Li0",
                 memtype=buffType,
                 dimensionVals=[len(fprime), self.subgroupSize],
             ),
-            DebugBuffer(
+            StorageBuffer(
                 device=self.device,
                 name="Lr0",
                 memtype=buffType,
@@ -112,12 +104,12 @@ class Loiacono_GPU(ComputeShader, Loiacono):
                 dimensionVals=[1],
                 memProperties=memProperties,
             ),
-            DebugBuffer(
-                device=self.device,
-                name="allShaders",
-                memtype=buffType,
-                dimensionVals=[constantsDict["TOTAL_THREAD_COUNT"]],
-            ),
+            #DebugBuffer(
+            #    device=self.device,
+            #    name="allShaders",
+            #    memtype=buffType,
+            #    dimensionVals=[constantsDict["TOTAL_THREAD_COUNT"]],
+            #),
         ]
         
         # Compute Stage: the only stage
@@ -164,50 +156,51 @@ class Loiacono_GPU(ComputeShader, Loiacono):
 if __name__ == "__main__":
 
     infile = sys.argv[1]
-    m = 20
+    multiple = 10
     # load the wav file
     y, sr = librosa.load(infile, sr=None)
     
-    # generate a Loiacono based on this SR
-    linst = Loiacono(
-        subdivisionOfSemitone=2.0,
+    fprime = getMidiFprime(
+        subdivisionOfSemitone=1.0,
         midistart=30,
         midiend=110,
         sr=sr,
-        multiple=m)
+    )
+    
+    # generate a Loiacono based on this SR
+    linst = Loiacono(
+        fprime = fprime,
+        multiple=multiple
+    )
     
     # get a section in the middle of sample for processing
-    y = y[int(len(y) / 2) : int(len(y) / 2 + linst.DTFTLEN)]
-    linst.debugRun(y)
+    z = y[int(len(y) / 2) : int(len(y) / 2 + linst.DTFTLEN)]
+    linst.debugRun(z)
     print(linst.selectedNote)
-    #linst.plot()
-    
-    if(linst.DTFTLEN != 2**15):
-        raise Exception("For GPU, DTFTLEN MUST BE 2**15 = 32768 = 32**3. Instead it is " + str(linst.DTFTLEN))
-    emptySignal = np.zeros((linst.DTFTLEN))
     
     # begin GPU test
     instance = Instance(verbose=False)
     devnum = 0
     device = instance.getDevice(devnum)
     
+    z = y[int(len(y) / 2) : int(len(y) / 2 + 2**15)]
+    
+    # coarse detection
     linst_gpu = Loiacono_GPU(
-        instance = instance,
         device = device,
-        midistart=30,
-        midiend=110,
-        subdivisionOfSemitone=2.0,
-        signalLength = linst.DTFTLEN,
-        fprime = linst.fprime,
-        m = linst.m,
+        signalLength = 2**15,
+        fprime = fprime,
+        multiple = linst.multiple,
         constantsDict = {},
     )
     
-    linst_gpu.x.setBuffer(y)
+    linst_gpu.x.setBuffer(z)
     for i in range(10):
         linst_gpu.debugRun()
     #linst_gpu.dumpMemory()
+    readstart = time.time()
     linst_gpu.absresult = linst_gpu.L.getAsNumpyArray()
+    print("Readtime " + str(time.time()- readstart))
     v2time = time.time()
     linst_gpu.findNote()
     linst.findNote()
@@ -215,10 +208,25 @@ if __name__ == "__main__":
     print(linst_gpu.selectedNote)
     print(linst.selectedNote)
     
+    precision = 10
+    midiIndicesToCheck = np.arange(linst_gpu.selectedNote-0.5, linst_gpu.selectedNote+0.5, step = 1.0/precison)
+    print(midiIndicesToCheck)
+    die
+    # fine detection
+    linst_gpu_fine = Loiacono_GPU(
+        device = device,
+        signalLength = 2**15,
+        fprime = fprime_fine,
+        multiple = 30,
+        constantsDict = {},
+    )
+    
+    
+    print(len(linst_gpu.absresult))
     
     fig, ((ax1, ax2)) = plt.subplots(1, 2)
-    ax1.plot(linst.midiIndices, linst_gpu.absresult)
-    ax2.plot(linst.midiIndices, linst.absresult)
+    ax1.plot(linst.midiIndices, linst_gpu.notesPadded)
+    ax2.plot(linst.midiIndices, linst.notesPadded)
     
     plt.show()
     

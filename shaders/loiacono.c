@@ -36,25 +36,19 @@ void main(){
     uint n                 = (unique_thread_ix+uint(offset[0]))%SIGNAL_LENGTH;
     uint frequency_ix      = unique_thread_ix/SIGNAL_LENGTH;
     
-    // do the loiacono transform
-    float thisDatum = x[n];
+    float Tr = 0;
+    float Ti = 0;
+    
     float thisF     = f[frequency_ix];
     float thisP     = 1/thisF;
-    
-    float Tr;
-    float Ti;
-    
-    //allShaders[unique_thread_ix] = float(thisP);
-    
-    float dftlen = 1/sqrt(m / thisF);
-
-    if(n >= SIGNAL_LENGTH - m*thisP){
+    if(n >= SIGNAL_LENGTH - multiple*thisP){
+        
+        // do the loiacono transform
+        float thisDatum = x[n];
+        float dftlen = 1/sqrt(m / thisF);
+        
         Tr =  thisDatum*cos(2*PI*thisF*n)*dftlen;
         Ti = -thisDatum*sin(2*PI*thisF*n)*dftlen;
-    }
-    else{
-        Tr = 0;
-        Ti = 0;
     }
     
     

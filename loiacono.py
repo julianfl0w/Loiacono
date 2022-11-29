@@ -28,20 +28,73 @@ def loadFlute():
     y, sr = librosa.load("ahh.wav", sr=None)
     return y, sr
 
+def getMidiFprime(
+        midistart=30,
+        midiend=110,
+        subdivisionOfSemitone=4.0,
+        sr=48000,):
+   
+    midiRange   = midiend-midistart
+    midiIndices = np.arange(midistart, midiend, 1 / subdivisionOfSemitone)
+    fprime = [
+        note2Freq(note) / sr for note in midiIndices
+    ]
+    return np.array(fprime)
+
+# function to generate note detection pattern
+def getHarmonicPattern(
+        midistart=30,
+        midiend=110,
+        subdivisionOfSemitone=4.0,
+        sr=48000,):
+
+    midiRange   = midiend-midistart
+    # create the note pattern
+    # only need to do this once
+    notePattern = np.zeros(int(midiRange/2 * subdivisionOfSemitone))
+    zerothFreq = note2Freq(0)
+    hnotes = []
+    for harmonic in range(1, 5):
+        hfreq = zerothFreq * harmonic
+        hnote = freq2Note(hfreq) * subdivisionOfSemitone
+        if hnote + 1 < len(notePattern):
+            hnotes += [hnote]
+            notePattern[int(hnote)] = 1 - (hnote % 1)
+            notePattern[int(hnote) + 1] = hnote % 1
+                
+    return notePattern
+
+def findNote( 
+        spectrum, 
+        midistart=30,
+        midiend=110,
+        subdivisionOfSemitone=4.0,
+        sr=48000,):
+    notePattern = getHarmonicPattern
+    startTime = time.time()
+    notes = np.correlate(spectrum, notePattern, mode="valid")
+    self.notesPadded = np.append(
+        self.notes, np.zeros(int(len(self.notePattern) - 1))
+    )
+    self.maxIndex = np.argmax(self.notesPadded)
+    self.selectedNote = self.midistart + self.maxIndex / self.subdivisionOfSemitone
+    self.selectedAmplitude = self.notesPadded[self.maxIndex]
+    endTime = time.time()
+    print("correlate runtime (s) : " + str(endTime-startTime))
+
+    # print("selectedNote " + str(selectedNote))
+    # print("expected " + str([selectedNote + h for h in self.hnotes]))
+
 
 class Loiacono:
     def __init__(
         self,
-        subdivisionOfSemitone=4.0,
-        midistart=30,
-        midiend=110,
-        sr=48000,
+        fprime,
         multiple=50,
     ):
-        self.midiRange = midiend-midistart
         # the dftlen is the period in samples of the lowest note, times the multiple
         # log ceiling
-        lowestNoteNormalizedFreq = (note2Freq(midistart) / sr)
+        lowestNoteNormalizedFreq = fprime[0]
         #print(lowestNoteNormalizedFreq)
         #print(sr)
         self.m = multiple
@@ -50,31 +103,22 @@ class Loiacono:
         #print(baseL2)
         self.DTFTLEN = int(2 ** baseL2)
         #print(self.DTFTLEN)
-        self.SAMPLE_FREQUENCY = sr
-        midilen = midiend - midistart
-        self.midiIndices = np.arange(midistart, midiend, 1 / subdivisionOfSemitone)
-        frequenciesHz = np.array([note2Freq(n) for n in self.midiIndices])
-        self.fprime = frequenciesHz / sr
+        self.fprime = fprime
+
         self.wRadiansPerSample = 2 * np.pi * self.fprime
 
-        self.subdivisionOfSemitone = subdivisionOfSemitone
-        self.midistart = midistart
-        self.midiend = midiend
         self.getTwittleFactors(multiple=multiple)
-        self.getHarmonicPattern()
+        getHarmonicPattern()
 
     def getTwittleFactors(self, multiple):
         self.N = np.arange(self.DTFTLEN)
-        self.normalizedFrequency = [
-            note2Freq(note) / self.SAMPLE_FREQUENCY for note in self.midiIndices
-        ]
-        self.W = np.array([2 * np.pi * w for w in self.normalizedFrequency])
+        self.W = np.array([2 * np.pi * w for w in self.fprime])
 
         self.WN = np.dot(np.expand_dims(self.W, 1), np.expand_dims(self.N, 0))
         self.EIWN = np.exp(-1j * self.WN)
 
         # each dtftlen should be an integer multiple of its period
-        for i, fprime in enumerate(self.normalizedFrequency):
+        for i, fprime in enumerate(self.fprime):
             dftlen = multiple / fprime
             # set zeros before the desired period (a multiple of pprime)
             self.EIWN[i, : int(self.DTFTLEN - dftlen)] = np.array([0])
@@ -83,22 +127,6 @@ class Loiacono:
             #self.EIWN[i, int(self.DTFTLEN - dftlen) :] *= get_window(
             #    "hann", len(self.EIWN[i, int(self.DTFTLEN - dftlen) :])
             #)
-
-    # function to generate note detection pattern
-    def getHarmonicPattern(self):
-
-        # create the note pattern
-        # only need to do this once
-        self.notePattern = np.zeros(int(self.midiRange/2 * self.subdivisionOfSemitone))
-        zerothFreq = note2Freq(0)
-        self.hnotes = []
-        for harmonic in range(1, 5):
-            hfreq = zerothFreq * harmonic
-            hnote = freq2Note(hfreq) * self.subdivisionOfSemitone
-            if hnote + 1 < len(self.notePattern):
-                self.hnotes += [hnote]
-                self.notePattern[int(hnote)] = 1 - (hnote % 1)
-                self.notePattern[int(hnote) + 1] = hnote % 1
 
     def debugRun(self, y):
         nstart = time.time()
@@ -114,24 +142,11 @@ class Loiacono:
         # print("transfrom runtime (s) : " + str(endTime-startTime))
         self.absresult = np.absolute(result)
         
-        self.findNote()
+        findNote(
+            spectrum = self.absresult
+        )
 
         # self.auto = np.correlate(y,y, mode="valid")
-
-    def findNote(self):
-        startTime = time.time()
-        self.notes = np.correlate(self.absresult, self.notePattern, mode="valid")
-        self.notesPadded = np.append(
-            self.notes, np.zeros(int(len(self.notePattern) - 1))
-        )
-        self.maxIndex = np.argmax(self.notesPadded)
-        self.selectedNote = self.midistart + self.maxIndex / self.subdivisionOfSemitone
-        self.selectedAmplitude = self.notesPadded[self.maxIndex]
-        endTime = time.time()
-        print("correlate runtime (s) : " + str(endTime-startTime))
-
-        # print("selectedNote " + str(selectedNote))
-        # print("expected " + str([selectedNote + h for h in self.hnotes]))
 
     def plot(self):
         # using tuple unpacking for multiple Axes
