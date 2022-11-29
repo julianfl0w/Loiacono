@@ -13,7 +13,7 @@ import numpy as np
 here = os.path.dirname(os.path.abspath(__file__))
 from loiacono import *
 
-class Loiacono_GPU(ComputeShader):
+class Loiacono_GPU(ComputeShader, Loiacono):
     def __init__(
         self,
         instance,
@@ -21,6 +21,9 @@ class Loiacono_GPU(ComputeShader):
         signalLength,
         fprime,
         m, 
+        midistart=30,
+        midiend=110,
+        subdivisionOfSemitone=4.0,
         constantsDict = {},
         DEBUG=False,
         buffType="float",
@@ -30,6 +33,7 @@ class Loiacono_GPU(ComputeShader):
         | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
     ):
 
+        self.midiRange = midiend-midistart
         constantsDict["m"] = m
         constantsDict["SIGNAL_LENGTH"] = signalLength
         constantsDict["PROCTYPE"] = buffType
@@ -37,6 +41,10 @@ class Loiacono_GPU(ComputeShader):
         constantsDict["TOTAL_THREAD_COUNT"] = signalLength * len(fprime)
         constantsDict["THREADS_PER_WORKGROUP"] = 1 << constantsDict["LG_WG_SIZE"]
         self.dim2index = {}
+        
+        self.subdivisionOfSemitone = subdivisionOfSemitone
+        self.midistart=midistart,
+        self.midiend=midiend,
 
         # device selection and instantiation
         self.instance = instance
@@ -142,6 +150,7 @@ class Loiacono_GPU(ComputeShader):
                 
         self.f.setBuffer(fprime)
         self.offset.setBuffer(np.zeros((1)))
+        self.getHarmonicPattern()
 
     def debugRun(self):
         vstart = time.time()
@@ -161,9 +170,9 @@ if __name__ == "__main__":
     
     # generate a Loiacono based on this SR
     linst = Loiacono(
-        subdivisionOfSemitone=4.0,
+        subdivisionOfSemitone=2.0,
         midistart=30,
-        midiend=112,
+        midiend=110,
         sr=sr,
         multiple=m)
     
@@ -185,6 +194,9 @@ if __name__ == "__main__":
     linst_gpu = Loiacono_GPU(
         instance = instance,
         device = device,
+        midistart=30,
+        midiend=110,
+        subdivisionOfSemitone=2.0,
         signalLength = linst.DTFTLEN,
         fprime = linst.fprime,
         m = linst.m,
@@ -194,17 +206,20 @@ if __name__ == "__main__":
     linst_gpu.x.setBuffer(y)
     for i in range(10):
         linst_gpu.debugRun()
-    linst_gpu.dumpMemory()
-    
+    #linst_gpu.dumpMemory()
+    linst_gpu.absresult = linst_gpu.L.getAsNumpyArray()
     v2time = time.time()
-    ar = linst_gpu.L.getAsNumpyArray()
+    linst_gpu.findNote()
+    linst.findNote()
     print("v2rt " + str(time.time() - v2time))
+    print(linst_gpu.selectedNote)
+    print(linst.selectedNote)
     
     
     fig, ((ax1, ax2)) = plt.subplots(1, 2)
-    ax1.plot(linst.midiIndices, ar)
-    #ax1.plot(linst_gpu.allShaders.getAsNumpyArray())
+    ax1.plot(linst.midiIndices, linst_gpu.absresult)
     ax2.plot(linst.midiIndices, linst.absresult)
+    
     plt.show()
     
-    print(json.dumps(list(ar), indent=2))
+    #print(json.dumps(list(ar), indent=2))

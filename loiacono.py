@@ -38,7 +38,7 @@ class Loiacono:
         sr=48000,
         multiple=50,
     ):
-
+        self.midiRange = midiend-midistart
         # the dftlen is the period in samples of the lowest note, times the multiple
         # log ceiling
         lowestNoteNormalizedFreq = (note2Freq(midistart) / sr)
@@ -89,7 +89,7 @@ class Loiacono:
 
         # create the note pattern
         # only need to do this once
-        self.notePattern = np.zeros(int(50 * self.subdivisionOfSemitone))
+        self.notePattern = np.zeros(int(self.midiRange/2 * self.subdivisionOfSemitone))
         zerothFreq = note2Freq(0)
         self.hnotes = []
         for harmonic in range(1, 5):
@@ -114,22 +114,22 @@ class Loiacono:
         # print("transfrom runtime (s) : " + str(endTime-startTime))
         self.absresult = np.absolute(result)
         
-        self.findNote(self.absresult)
+        self.findNote()
 
         # self.auto = np.correlate(y,y, mode="valid")
 
-    def findNote(self, absresult):
+    def findNote(self):
         startTime = time.time()
-        self.notes = np.correlate(absresult, self.notePattern, mode="valid")
+        self.notes = np.correlate(self.absresult, self.notePattern, mode="valid")
         self.notesPadded = np.append(
             self.notes, np.zeros(int(len(self.notePattern) - 1))
         )
-        endTime = time.time()
-        # print("correlate runtime (s) : " + str(endTime-startTime))
-
         self.maxIndex = np.argmax(self.notesPadded)
         self.selectedNote = self.midistart + self.maxIndex / self.subdivisionOfSemitone
         self.selectedAmplitude = self.notesPadded[self.maxIndex]
+        endTime = time.time()
+        print("correlate runtime (s) : " + str(endTime-startTime))
+
         # print("selectedNote " + str(selectedNote))
         # print("expected " + str([selectedNote + h for h in self.hnotes]))
 

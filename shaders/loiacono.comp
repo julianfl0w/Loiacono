@@ -14,7 +14,7 @@
 #define SIGNAL_LENGTH 32768
 #define PROCTYPE float
 #define LG_WG_SIZE 7
-#define TOTAL_THREAD_COUNT 10747904
+#define TOTAL_THREAD_COUNT 5242880
 #define THREADS_PER_WORKGROUP 128
 // This will be (or has been) replaced by constant definitions
 layout(std430, set = 0, binding = 0) buffer x_buf
@@ -23,27 +23,27 @@ layout(std430, set = 0, binding = 0) buffer x_buf
 };
 layout(std430, set = 0, binding = 1) buffer Li1_buf
 {
-    float Li1[335872];
+    float Li1[163840];
 };
 layout(std430, set = 0, binding = 2) buffer Lr1_buf
 {
-    float Lr1[335872];
+    float Lr1[163840];
 };
 layout(std430, set = 0, binding = 3) buffer Li0_buf
 {
-    float Li0[10496];
+    float Li0[5120];
 };
 layout(std430, set = 0, binding = 4) buffer Lr0_buf
 {
-    float Lr0[10496];
+    float Lr0[5120];
 };
 layout(std430, set = 0, binding = 5) buffer L_buf
 {
-   writeonly float L[328];
+   writeonly float L[160];
 };
 layout(std430, set = 0, binding = 6) buffer f_buf
 {
-   readonly float f[328];
+   readonly float f[160];
 };
 layout(std140, set = 0, binding = 7) uniform offset_buf
 {
@@ -51,7 +51,7 @@ layout(std140, set = 0, binding = 7) uniform offset_buf
 };
 layout(std430, set = 0, binding = 8) buffer allShaders_buf
 {
-    float allShaders[10747904];
+    float allShaders[5242880];
 };
 // This will be (or has been) replaced by buffer definitions
     
