@@ -44,6 +44,7 @@ class Loiacono:
         lowestNoteNormalizedFreq = (note2Freq(midistart) / sr)
         #print(lowestNoteNormalizedFreq)
         #print(sr)
+        self.m = multiple
         baseL2 = np.log2(multiple / lowestNoteNormalizedFreq)
         baseL2 = np.ceil(baseL2)
         #print(baseL2)
@@ -53,8 +54,8 @@ class Loiacono:
         midilen = midiend - midistart
         self.midiIndices = np.arange(midistart, midiend, 1 / subdivisionOfSemitone)
         frequenciesHz = np.array([note2Freq(n) for n in self.midiIndices])
-
-        self.wRadiansPerSample = 2 * np.pi * frequenciesHz / sr
+        self.fprime = frequenciesHz / sr
+        self.wRadiansPerSample = 2 * np.pi * self.fprime
 
         self.subdivisionOfSemitone = subdivisionOfSemitone
         self.midistart = midistart
@@ -99,6 +100,12 @@ class Loiacono:
                 self.notePattern[int(hnote)] = 1 - (hnote % 1)
                 self.notePattern[int(hnote) + 1] = hnote % 1
 
+    def debugRun(self, y):
+        nstart = time.time()
+        self.run(y)
+        nlen = time.time() - nstart
+        print("nlen " + str(nlen))
+                
     def run(self, y):
 
         startTime = time.time()
@@ -106,6 +113,7 @@ class Loiacono:
         endTime = time.time()
         # print("transfrom runtime (s) : " + str(endTime-startTime))
         self.absresult = np.absolute(result)
+        
         self.findNote(self.absresult)
 
         # self.auto = np.correlate(y,y, mode="valid")
@@ -163,9 +171,10 @@ class Loiacono:
 
 if __name__ == "__main__":
 
+    m = 10
     if sys.argv[1] == "whiteNoiseTest":
         linst = Loiacono(
-            sr=48000, midistart=30, midiend=128, subdivisionOfSemitone=2.0, multiple=80
+            sr=48000, midistart=30, midiend=128, subdivisionOfSemitone=2.0, multiple=m
         )
         linst.whiteNoiseTest()
 
@@ -175,8 +184,9 @@ if __name__ == "__main__":
     y, sr = librosa.load(infile, sr=None)
     # generate a Loiacono based on this SR
     linst = Loiacono(
-        sr=sr, midistart=30, midiend=128, subdivisionOfSemitone=2.0, multiple=80
+        sr=sr, midistart=30, midiend=128, subdivisionOfSemitone=2.0, multiple=m
     )
+    
     # get a section in the middle of sample for processing
     y = y[int(len(y) / 2) : int(len(y) / 2 + linst.DTFTLEN)]
     linst.run(y)
