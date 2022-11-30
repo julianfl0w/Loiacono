@@ -3,13 +3,12 @@ import sys
 import pkg_resources
 import time
 here = os.path.dirname(os.path.abspath(__file__))
+
+# if vulkanese isn't installed, check for a development version parallel to Loiacono repo ;)
 if "vulkanese" not in [pkg.key for pkg in pkg_resources.working_set]:
     sys.path = [os.path.join(here, "..", "vulkanese", "vulkanese")] + sys.path
 
 from vulkanese import *
-import numpy as np
-                       
-here = os.path.dirname(os.path.abspath(__file__))
 from loiacono import *
 
 class Loiacono_GPU(ComputeShader, Loiacono):
@@ -22,7 +21,6 @@ class Loiacono_GPU(ComputeShader, Loiacono):
         constantsDict = {},
         DEBUG=False,
         buffType="float",
-        shader_basename="shaders/loiacono",
         memProperties=0
         | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
         | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
@@ -32,8 +30,8 @@ class Loiacono_GPU(ComputeShader, Loiacono):
         constantsDict["multiple"] = multiple
         constantsDict["SIGNAL_LENGTH"] = signalLength
         constantsDict["PROCTYPE"] = buffType
-        constantsDict["LG_WG_SIZE"] = 7
         constantsDict["TOTAL_THREAD_COUNT"] = signalLength * len(fprime)
+        constantsDict["LG_WG_SIZE"] = 7
         constantsDict["THREADS_PER_WORKGROUP"] = 1 << constantsDict["LG_WG_SIZE"]
         self.dim2index = {}
         
@@ -42,43 +40,42 @@ class Loiacono_GPU(ComputeShader, Loiacono):
         self.instance = device.instance
         self.device = device
         self.constantsDict = constantsDict
-        self.subgroupSize = 32
-        self.numSubgroups = signalLength * len(fprime) / self.subgroupSize
+        self.numSubgroups = signalLength * len(fprime) / self.device.subgroupSize
         self.numSubgroupsPerFprime = int(self.numSubgroups / len(fprime))
 
-
+        # declare buffers. they will be in GPU memory, but visible from the host (!)
         buffers = [
             StorageBuffer(
                 device=self.device,
                 name="x",
                 memtype=buffType,
                 qualifier="readonly",
-                dimensionVals=2**15, # always 32**3
+                dimensionVals=[2**15], # always 32**3
                 memProperties=memProperties,
             ),
             StorageBuffer(
                 device=self.device,
                 name="Li1",
                 memtype=buffType,
-                dimensionVals=[len(fprime), self.subgroupSize**2],
+                dimensionVals=[len(fprime), self.device.subgroupSize**2],
             ),
             StorageBuffer(
                 device=self.device,
                 name="Lr1",
                 memtype=buffType,
-                dimensionVals=[len(fprime), self.subgroupSize**2],
+                dimensionVals=[len(fprime), self.device.subgroupSize**2],
             ),
             StorageBuffer(
                 device=self.device,
                 name="Li0",
                 memtype=buffType,
-                dimensionVals=[len(fprime), self.subgroupSize],
+                dimensionVals=[len(fprime), self.device.subgroupSize],
             ),
             StorageBuffer(
                 device=self.device,
                 name="Lr0",
                 memtype=buffType,
-                dimensionVals=[len(fprime), self.subgroupSize],
+                dimensionVals=[len(fprime), self.device.subgroupSize],
             ),
             StorageBuffer(
                 device=self.device,
@@ -112,7 +109,9 @@ class Loiacono_GPU(ComputeShader, Loiacono):
             #),
         ]
         
+        # Create a compute shader
         # Compute Stage: the only stage
+        shader_basename="shaders/loiacono",
         ComputeShader.__init__(
             self,
             sourceFilename=os.path.join(
@@ -160,7 +159,7 @@ if __name__ == "__main__":
     # load the wav file
     y, sr = librosa.load(infile, sr=None)
     
-    fprime = getMidiFprime(
+    midiIndices, fprime = getMidiFprime(
         subdivisionOfSemitone=1.0,
         midistart=30,
         midiend=110,

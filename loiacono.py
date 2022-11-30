@@ -1,90 +1,8 @@
 import numpy as np
 import librosa
 import matplotlib.pyplot as plt
-from scipy.signal import find_peaks
-from scipy.signal import get_window
 import time
 import sys
-
-
-def freq2Note(f):
-    # A4, MIDI index 69
-    a = 440.0  # frequency of A (common value is 440Hz)
-    return 12 * (np.log2(f) - np.log2(a)) + 69
-
-
-def note2Freq(note):
-    # A4, MIDI index 69
-    a = 440.0  # frequency of A (common value is 440Hz)
-    # return 440*2**((note-69)/12)
-    return (a / 32) * (2 ** ((note - 9) / 12.0))
-
-
-def loadFlute():
-    # import the file to be assessed
-    # y, sr = librosa.load("../vsynth/samples/VSCO-2-CE/Woodwinds/Bassoon/sus/PSBassoon_A1_v1_1.wav", sr=None)
-    # y, sr = librosa.load("white.wav", sr=None)
-    # y, sr = librosa.load("../vsynth/samples/VSCO-2-CE/Brass/Trumpet/sus/Sum_SHTrumpet_sus_C3_v1_rr1.wav", sr=None)
-    y, sr = librosa.load("ahh.wav", sr=None)
-    return y, sr
-
-def getMidiFprime(
-        midistart=30,
-        midiend=110,
-        subdivisionOfSemitone=4.0,
-        sr=48000,):
-   
-    midiRange   = midiend-midistart
-    midiIndices = np.arange(midistart, midiend, 1 / subdivisionOfSemitone)
-    fprime = [
-        note2Freq(note) / sr for note in midiIndices
-    ]
-    return np.array(fprime)
-
-# function to generate note detection pattern
-def getHarmonicPattern(
-        midistart=30,
-        midiend=110,
-        subdivisionOfSemitone=4.0,
-        sr=48000,):
-
-    midiRange   = midiend-midistart
-    # create the note pattern
-    # only need to do this once
-    notePattern = np.zeros(int(midiRange/2 * subdivisionOfSemitone))
-    zerothFreq = note2Freq(0)
-    hnotes = []
-    for harmonic in range(1, 5):
-        hfreq = zerothFreq * harmonic
-        hnote = freq2Note(hfreq) * subdivisionOfSemitone
-        if hnote + 1 < len(notePattern):
-            hnotes += [hnote]
-            notePattern[int(hnote)] = 1 - (hnote % 1)
-            notePattern[int(hnote) + 1] = hnote % 1
-                
-    return notePattern
-
-def findNote( 
-        spectrum, 
-        midistart=30,
-        midiend=110,
-        subdivisionOfSemitone=4.0,
-        sr=48000,):
-    notePattern = getHarmonicPattern
-    startTime = time.time()
-    notes = np.correlate(spectrum, notePattern, mode="valid")
-    self.notesPadded = np.append(
-        self.notes, np.zeros(int(len(self.notePattern) - 1))
-    )
-    self.maxIndex = np.argmax(self.notesPadded)
-    self.selectedNote = self.midistart + self.maxIndex / self.subdivisionOfSemitone
-    self.selectedAmplitude = self.notesPadded[self.maxIndex]
-    endTime = time.time()
-    print("correlate runtime (s) : " + str(endTime-startTime))
-
-    # print("selectedNote " + str(selectedNote))
-    # print("expected " + str([selectedNote + h for h in self.hnotes]))
-
 
 class Loiacono:
     def __init__(
@@ -123,10 +41,6 @@ class Loiacono:
             # set zeros before the desired period (a multiple of pprime)
             self.EIWN[i, : int(self.DTFTLEN - dftlen)] = np.array([0])
             self.EIWN[i,:] /= dftlen**(1/2)
-            
-            #self.EIWN[i, int(self.DTFTLEN - dftlen) :] *= get_window(
-            #    "hann", len(self.EIWN[i, int(self.DTFTLEN - dftlen) :])
-            #)
 
     def debugRun(self, y):
         nstart = time.time()

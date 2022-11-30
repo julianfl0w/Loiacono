@@ -18,23 +18,18 @@ layout (local_size_x = THREADS_PER_WORKGROUP, local_size_y = 1, local_size_z = 1
 
 void main(){
     
-    uint workGroup_ix      = gl_WorkGroupID.x;
-    uint thread_ix         = gl_LocalInvocationID.x;
-    
-    //uint thread_ix         = atomicAdd(sh_thread_ix, 1);
-    uint workgroupStart_ix = workGroup_ix*THREADS_PER_WORKGROUP;
-    
     // subgroupSize is the size of the subgroup – matches the API property
     //gl_SubgroupInvocationID is the ID of the invocation within the subgroup, an integer in the range [0..gl_SubgroupSize).
     // gl_SubgroupID is the ID of the subgroup within the local workgroup, an integer in the range [0..gl_NumSubgroups).
     //gl_NumSubgroups is the number of subgroups within the local workgroup.
 
+    uint workGroup_ix       = gl_WorkGroupID.x;
+    uint thread_ix          = gl_LocalInvocationID.x;
+    uint workgroupStart_ix  = workGroup_ix*THREADS_PER_WORKGROUP;
     uint absoluteSubgroupId = gl_SubgroupID + gl_NumSubgroups * workGroup_ix;
-    
-    //uint unique_thread_ix  = workgroupStart_ix + thread_ix;
-    uint unique_thread_ix  = absoluteSubgroupId*gl_SubgroupSize + gl_SubgroupInvocationID;
-    uint n                 = (unique_thread_ix+uint(offset[0]))%SIGNAL_LENGTH;
-    uint frequency_ix      = unique_thread_ix/SIGNAL_LENGTH;
+    uint unique_thread_ix   = absoluteSubgroupId*gl_SubgroupSize + gl_SubgroupInvocationID;
+    uint n                  = (unique_thread_ix+uint(offset[0]))%SIGNAL_LENGTH;
+    uint frequency_ix       = unique_thread_ix/SIGNAL_LENGTH;
     
     float Tr = 0;
     float Ti = 0;
