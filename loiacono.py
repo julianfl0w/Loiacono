@@ -8,27 +8,24 @@ class Loiacono:
     def __init__(
         self,
         fprime,
+        dtftlen,
         multiple=50,
+        
     ):
         # the dftlen is the period in samples of the lowest note, times the multiple
         # log ceiling
         lowestNoteNormalizedFreq = fprime[0]
         #print(lowestNoteNormalizedFreq)
         #print(sr)
-        self.m = multiple
-        baseL2 = np.log2(multiple / lowestNoteNormalizedFreq)
-        baseL2 = np.ceil(baseL2)
+        self.multiple = multiple
+        #baseL2 = np.log2(multiple / lowestNoteNormalizedFreq)
+        #baseL2 = np.ceil(baseL2)
         #print(baseL2)
-        self.DTFTLEN = int(2 ** baseL2)
+        self.DTFTLEN = dtftlen
         #print(self.DTFTLEN)
         self.fprime = fprime
 
-        self.wRadiansPerSample = 2 * np.pi * self.fprime
-
-        self.getTwittleFactors(multiple=multiple)
-        getHarmonicPattern()
-
-    def getTwittleFactors(self, multiple):
+        # get twittle factors
         self.N = np.arange(self.DTFTLEN)
         self.W = np.array([2 * np.pi * w for w in self.fprime])
 
@@ -37,7 +34,7 @@ class Loiacono:
 
         # each dtftlen should be an integer multiple of its period
         for i, fprime in enumerate(self.fprime):
-            dftlen = multiple / fprime
+            dftlen = self.multiple / fprime
             # set zeros before the desired period (a multiple of pprime)
             self.EIWN[i, : int(self.DTFTLEN - dftlen)] = np.array([0])
             self.EIWN[i,:] /= dftlen**(1/2)
@@ -56,10 +53,6 @@ class Loiacono:
         # print("transfrom runtime (s) : " + str(endTime-startTime))
         self.absresult = np.absolute(result)
         
-        findNote(
-            spectrum = self.absresult
-        )
-
         # self.auto = np.correlate(y,y, mode="valid")
 
     def plot(self):
@@ -103,7 +96,7 @@ if __name__ == "__main__":
     m = 10
     if sys.argv[1] == "whiteNoiseTest":
         linst = Loiacono(
-            sr=48000, midistart=30, midiend=128, subdivisionOfSemitone=2.0, multiple=m
+            fprime = np.arange(0,0.5, 1.0/100)
         )
         linst.whiteNoiseTest()
 

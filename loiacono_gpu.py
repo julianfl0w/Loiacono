@@ -2,8 +2,8 @@ import os
 import sys
 import pkg_resources
 import time
-here = os.path.dirname(os.path.abspath(__file__))
 
+here = os.path.dirname(os.path.abspath(__file__))
 # if vulkanese isn't installed, check for a development version parallel to Loiacono repo ;)
 if "vulkanese" not in [pkg.key for pkg in pkg_resources.working_set]:
     sys.path = [os.path.join(here, "..", "vulkanese", "vulkanese")] + sys.path
@@ -11,13 +11,16 @@ if "vulkanese" not in [pkg.key for pkg in pkg_resources.working_set]:
 from vulkanese import *
 from loiacono import *
 
-class Loiacono_GPU(ComputeShader, Loiacono):
+loiacono_home = os.path.dirname(os.path.abspath(__file__))
+
+
+class Loiacono_GPU(ComputeShader):
     def __init__(
         self,
         device,
-        signalLength,
         fprime,
         multiple, 
+        signalLength=2**15,
         constantsDict = {},
         DEBUG=False,
         buffType="float",
@@ -26,7 +29,6 @@ class Loiacono_GPU(ComputeShader, Loiacono):
         | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
     ):
 
-        self.midiRange = midiend-midistart
         constantsDict["multiple"] = multiple
         constantsDict["SIGNAL_LENGTH"] = signalLength
         constantsDict["PROCTYPE"] = buffType
@@ -45,6 +47,7 @@ class Loiacono_GPU(ComputeShader, Loiacono):
 
         # declare buffers. they will be in GPU memory, but visible from the host (!)
         buffers = [
+            # x is the input signal
             StorageBuffer(
                 device=self.device,
                 name="x",
@@ -53,6 +56,8 @@ class Loiacono_GPU(ComputeShader, Loiacono):
                 dimensionVals=[2**15], # always 32**3
                 memProperties=memProperties,
             ),
+            # The following 4 are reduction buffers
+            # Intermediate buffers for computing the sum 
             StorageBuffer(
                 device=self.device,
                 name="Li1",
@@ -77,6 +82,7 @@ class Loiacono_GPU(ComputeShader, Loiacono):
                 memtype=buffType,
                 dimensionVals=[len(fprime), self.device.subgroupSize],
             ),
+            # L is the final output
             StorageBuffer(
                 device=self.device,
                 name="L",
@@ -96,7 +102,7 @@ class Loiacono_GPU(ComputeShader, Loiacono):
             UniformBuffer(
                 device=self.device,
                 name="offset",
-                memtype=buffType,
+                memtype="uint",
                 qualifier="readonly",
                 dimensionVals=[1],
                 memProperties=memProperties,
@@ -111,11 +117,11 @@ class Loiacono_GPU(ComputeShader, Loiacono):
         
         # Create a compute shader
         # Compute Stage: the only stage
-        shader_basename="shaders/loiacono",
+        shader_basename="shaders/loiacono"
         ComputeShader.__init__(
             self,
             sourceFilename=os.path.join(
-                here, shader_basename + ".c"
+                loiacono_home, shader_basename + ".c"
             ),  # can be GLSL or SPIRV
             parent=self.instance,
             constantsDict=self.constantsDict,
@@ -125,7 +131,6 @@ class Loiacono_GPU(ComputeShader, Loiacono):
             buffers=buffers,
             DEBUG=DEBUG,
             dim2index=self.dim2index,
-            memProperties=memProperties,
             workgroupCount=[
                 int(
                     signalLength * len(fprime)
@@ -141,7 +146,6 @@ class Loiacono_GPU(ComputeShader, Loiacono):
                 
         self.f.setBuffer(fprime)
         self.offset.setBuffer(np.zeros((1)))
-        self.getHarmonicPattern()
 
     def debugRun(self):
         vstart = time.time()
@@ -151,46 +155,42 @@ class Loiacono_GPU(ComputeShader, Loiacono):
         print("vlen " + str(vlen))
         # return self.sumOut.getAsNumpyArray()
 
+    def feed(self, newData):
+        self.x.setByIndexStart(self, self.offsetLocal, newData)
+        self.offsetLocal += len(newData)
+        self.offset.setByIndex(index = 0, data=[self.offsetLocal])
+        self.run()
+        return self.L.getAsNumpyArray()
 
 if __name__ == "__main__":
 
-    infile = sys.argv[1]
+    # generate a sine wave at A440, SR=48000
+    sr = 48000
+    A4 = 440
+    z = np.sin(np.arange(2**15)*2*np.pi*A4/sr)
+    
+    
     multiple = 10
-    # load the wav file
-    y, sr = librosa.load(infile, sr=None)
-    
-    midiIndices, fprime = getMidiFprime(
-        subdivisionOfSemitone=1.0,
-        midistart=30,
-        midiend=110,
-        sr=sr,
-    )
-    
+    normalizedStep = 1.0/100
+    fprime = np.arange(100/sr,1000/sr,normalizedStep)
     # generate a Loiacono based on this SR
     linst = Loiacono(
         fprime = fprime,
-        multiple=multiple
+        multiple=multiple,
+        dtftlen=2**15
     )
     
-    # get a section in the middle of sample for processing
-    z = y[int(len(y) / 2) : int(len(y) / 2 + linst.DTFTLEN)]
     linst.debugRun(z)
-    print(linst.selectedNote)
     
     # begin GPU test
     instance = Instance(verbose=False)
-    devnum = 0
-    device = instance.getDevice(devnum)
-    
-    z = y[int(len(y) / 2) : int(len(y) / 2 + 2**15)]
+    device = instance.getDevice(0)
     
     # coarse detection
     linst_gpu = Loiacono_GPU(
         device = device,
-        signalLength = 2**15,
         fprime = fprime,
         multiple = linst.multiple,
-        constantsDict = {},
     )
     
     linst_gpu.x.setBuffer(z)
@@ -200,32 +200,12 @@ if __name__ == "__main__":
     readstart = time.time()
     linst_gpu.absresult = linst_gpu.L.getAsNumpyArray()
     print("Readtime " + str(time.time()- readstart))
-    v2time = time.time()
-    linst_gpu.findNote()
-    linst.findNote()
-    print("v2rt " + str(time.time() - v2time))
-    print(linst_gpu.selectedNote)
-    print(linst.selectedNote)
-    
-    precision = 10
-    midiIndicesToCheck = np.arange(linst_gpu.selectedNote-0.5, linst_gpu.selectedNote+0.5, step = 1.0/precison)
-    print(midiIndicesToCheck)
-    die
-    # fine detection
-    linst_gpu_fine = Loiacono_GPU(
-        device = device,
-        signalLength = 2**15,
-        fprime = fprime_fine,
-        multiple = 30,
-        constantsDict = {},
-    )
-    
     
     print(len(linst_gpu.absresult))
     
     fig, ((ax1, ax2)) = plt.subplots(1, 2)
-    ax1.plot(linst.midiIndices, linst_gpu.notesPadded)
-    ax2.plot(linst.midiIndices, linst.notesPadded)
+    ax1.plot(linst.fprime*sr, linst_gpu.absresult)
+    ax2.plot(linst.fprime*sr, linst.absresult)
     
     plt.show()
     
