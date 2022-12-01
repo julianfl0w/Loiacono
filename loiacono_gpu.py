@@ -147,14 +147,14 @@ class Loiacono_GPU(ComputeShader):
             compressBuffers=True,
         )
                 
-        self.f.setBuffer(fprime)
-        self.offset.setBuffer(np.zeros((1)))
+        self.gpuBuffers.f.set(fprime)
+        self.gpuBuffers.offset.set(np.zeros((1)))
 
     def debugRun(self):
         vstart = time.time()
         self.run()
         vlen = time.time() - vstart
-        self.absresult = self.L
+        self.absresult = self.gpuBuffers.L
         print("vlen " + str(vlen))
         # return self.sumOut.getAsNumpyArray()
 
@@ -196,12 +196,12 @@ if __name__ == "__main__":
         multiple = linst.multiple,
     )
     
-    linst_gpu.x.setBuffer(z)
+    linst_gpu.gpuBuffers.x.set(z)
     for i in range(10):
         linst_gpu.debugRun()
     #linst_gpu.dumpMemory()
     readstart = time.time()
-    linst_gpu.absresult = linst_gpu.L.getAsNumpyArray()
+    linst_gpu.absresult = linst_gpu.gpuBuffers.L.getAsNumpyArray()
     print("Readtime " + str(time.time()- readstart))
     
     print(len(linst_gpu.absresult))
