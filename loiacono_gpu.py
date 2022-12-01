@@ -118,6 +118,9 @@ class Loiacono_GPU(ComputeShader):
         # Create a compute shader
         # Compute Stage: the only stage
         shader_basename="shaders/loiacono"
+        print(os.path.join(
+                loiacono_home, shader_basename + ".c"
+            ))
         ComputeShader.__init__(
             self,
             sourceFilename=os.path.join(
