@@ -36,7 +36,7 @@ class Loiacono_GPU(ComputeShader):
         constantsDict["LG_WG_SIZE"] = 7
         constantsDict["THREADS_PER_WORKGROUP"] = 1 << constantsDict["LG_WG_SIZE"]
         self.dim2index = {}
-        
+        self.signalLength = signalLength
 
         # device selection and instantiation
         self.instance = device.instance
@@ -99,12 +99,12 @@ class Loiacono_GPU(ComputeShader):
                 dimensionVals=[len(fprime)],
                 memProperties=memProperties,
             ),
-            UniformBuffer(
+            StorageBuffer(
                 device=self.device,
                 name="offset",
                 memtype="uint",
                 qualifier="readonly",
-                dimensionVals=[1],
+                dimensionVals=[16],
                 memProperties=memProperties,
             ),
             #DebugBuffer(
@@ -148,7 +148,8 @@ class Loiacono_GPU(ComputeShader):
         )
                 
         self.gpuBuffers.f.set(fprime)
-        self.gpuBuffers.offset.set(np.zeros((1)))
+        self.offset = 0
+        self.gpuBuffers.offset.zeroInitialize()
 
     def debugRun(self):
         vstart = time.time()
@@ -159,11 +160,11 @@ class Loiacono_GPU(ComputeShader):
         # return self.sumOut.getAsNumpyArray()
 
     def feed(self, newData):
-        self.x.setByIndexStart(self, self.offsetLocal, newData)
-        self.offsetLocal += len(newData)
-        self.offset.setByIndex(index = 0, data=[self.offsetLocal])
+        self.gpuBuffers.x.setByIndexStart(self.offset, newData)
+        self.offset = (self.offset + len(newData)) % self.signalLength
+        self.gpuBuffers.offset.setByIndex(index = 0, data=[self.offset])
         self.run()
-        return self.L.getAsNumpyArray()
+        return self.gpuBuffers.L.getAsNumpyArray()
 
 if __name__ == "__main__":
 

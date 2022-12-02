@@ -28,7 +28,8 @@ void main(){
     uint workgroupStart_ix  = workGroup_ix*THREADS_PER_WORKGROUP;
     uint absoluteSubgroupId = gl_SubgroupID + gl_NumSubgroups * workGroup_ix;
     uint unique_thread_ix   = absoluteSubgroupId*gl_SubgroupSize + gl_SubgroupInvocationID;
-    uint n                  = (unique_thread_ix+offset[0])%SIGNAL_LENGTH;
+    uint n                  = unique_thread_ix%SIGNAL_LENGTH;
+    uint read_ix            = (unique_thread_ix+offset[0])%SIGNAL_LENGTH;
     uint frequency_ix       = unique_thread_ix/SIGNAL_LENGTH;
     
     float Tr = 0;
@@ -39,7 +40,7 @@ void main(){
     if(n >= SIGNAL_LENGTH - multiple*thisP){
         
         // do the loiacono transform
-        float thisDatum = x[n];
+        float thisDatum = x[read_ix];
         float dftlen = 1/sqrt(multiple / thisF);
         
         Tr =  thisDatum*cos(2*PI*thisF*n)*dftlen;
