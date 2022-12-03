@@ -37,6 +37,7 @@ void main(){
     
     float thisF     = f[frequency_ix];
     float thisP     = 1/thisF;
+    //if(n >= SIGNAL_LENGTH - multiple*thisP){
     if(n >= SIGNAL_LENGTH - multiple*thisP){
         
         // do the loiacono transform
