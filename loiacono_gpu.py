@@ -2,6 +2,7 @@ import os
 import sys
 import pkg_resources
 import time
+from scipy.signal import get_window
 
 here = os.path.dirname(os.path.abspath(__file__))
 # if vulkanese isn't installed, check for a development version parallel to Loiacono repo ;)
@@ -37,6 +38,7 @@ class Loiacono_GPU(ComputeShader):
         constantsDict["TOTAL_THREAD_COUNT"] = signalLength * len(fprime)
         constantsDict["LG_WG_SIZE"] = 7
         constantsDict["THREADS_PER_WORKGROUP"] = 1 << constantsDict["LG_WG_SIZE"]
+        constantsDict["windowed"] = 0
         self.dim2index = {}
         self.signalLength = signalLength
 
@@ -116,7 +118,17 @@ class Loiacono_GPU(ComputeShader):
             #    dimensionVals=[constantsDict["TOTAL_THREAD_COUNT"]],
             #),
         ]
-        
+        if constantsDict["windowed"]:
+            buffers += [
+            StorageBuffer(
+                device=self.device,
+                name="window",
+                memtype=buffType,
+                qualifier="readonly",
+                dimensionVals=[1024], # always 32**3
+                memProperties=memProperties,
+            ),
+            ]
         # Create a compute shader
         # Compute Stage: the only stage
         ComputeShader.__init__(
@@ -148,6 +160,8 @@ class Loiacono_GPU(ComputeShader):
         self.gpuBuffers.f.set(fprime)
         self.gpuBuffers.offset.zeroInitialize()
         self.offset = 0
+        if constantsDict["windowed"]:
+            self.gpuBuffers.window.set(get_window('hamming', 1024))
 
     def debugRun(self):
         vstart = time.time()
