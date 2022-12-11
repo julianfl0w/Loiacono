@@ -38,7 +38,7 @@ void main(){
     float thisF     = f[frequency_ix];
     float thisP     = 1/thisF;
     if(n >= SIGNAL_LENGTH - multiple*thisP){
-    //if(n >= SIGNAL_LENGTH - 1024){
+    //if(n >= SIGNAL_LENGTH - 1024*2){
         float thisDatum = x[read_ix];
         //#if windowed
         //    float w = window[n - uint(SIGNAL_LENGTH - multiple*thisP)];

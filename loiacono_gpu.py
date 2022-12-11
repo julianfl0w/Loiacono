@@ -4,18 +4,19 @@ import pkg_resources
 import time
 from scipy.signal import get_window
 
-here = os.path.dirname(os.path.abspath(__file__))
+gpuhere = os.path.dirname(os.path.abspath(__file__))
 # if vulkanese isn't installed, check for a development version parallel to Loiacono repo ;)
 if "vulkanese" not in [pkg.key for pkg in pkg_resources.working_set]:
-    sys.path = [os.path.join(here, "..", "vulkanese", "vulkanese")] + sys.path
+    sys.path = [os.path.join(gpuhere, "..", "vulkanese")] + sys.path
 
-from vulkanese import *
+import vulkanese as ve
 from loiacono import *
+import vulkan as vk
 
 loiacono_home = os.path.dirname(os.path.abspath(__file__))
 
 # Create a compute shader 
-class Loiacono_GPU(ComputeShader):
+class Loiacono_GPU(ve.shader.Shader):
     def __init__(
         self,
         device,
@@ -26,8 +27,8 @@ class Loiacono_GPU(ComputeShader):
         DEBUG=False,
         buffType="float",
         memProperties=0
-        | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-        | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+        | vk.VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+        | vk.VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
     ):
 
         # the constants will be placed into the shader.comp file, 
@@ -39,7 +40,6 @@ class Loiacono_GPU(ComputeShader):
         constantsDict["LG_WG_SIZE"] = 7
         constantsDict["THREADS_PER_WORKGROUP"] = 1 << constantsDict["LG_WG_SIZE"]
         constantsDict["windowed"] = 0
-        self.dim2index = {}
         self.signalLength = signalLength
 
         # device selection and instantiation
@@ -48,11 +48,12 @@ class Loiacono_GPU(ComputeShader):
         self.constantsDict = constantsDict
         self.numSubgroups = signalLength * len(fprime) / self.device.subgroupSize
         self.numSubgroupsPerFprime = int(self.numSubgroups / len(fprime))
+        self.spectrum = np.zeros((len(fprime)))
 
         # declare buffers. they will be in GPU memory, but visible from the host (!)
         buffers = [
             # x is the input signal
-            StorageBuffer(
+            ve.buffer.StorageBuffer(
                 device=self.device,
                 name="x",
                 memtype=buffType,
@@ -62,32 +63,32 @@ class Loiacono_GPU(ComputeShader):
             ),
             # The following 4 are reduction buffers
             # Intermediate buffers for computing the sum 
-            StorageBuffer(
+            ve.buffer.StorageBuffer(
                 device=self.device,
                 name="Li1",
                 memtype=buffType,
                 dimensionVals=[len(fprime), self.device.subgroupSize**2],
             ),
-            StorageBuffer(
+            ve.buffer.StorageBuffer(
                 device=self.device,
                 name="Lr1",
                 memtype=buffType,
                 dimensionVals=[len(fprime), self.device.subgroupSize**2],
             ),
-            StorageBuffer(
+            ve.buffer.StorageBuffer(
                 device=self.device,
                 name="Li0",
                 memtype=buffType,
                 dimensionVals=[len(fprime), self.device.subgroupSize],
             ),
-            StorageBuffer(
+            ve.buffer.StorageBuffer(
                 device=self.device,
                 name="Lr0",
                 memtype=buffType,
                 dimensionVals=[len(fprime), self.device.subgroupSize],
             ),
             # L is the final output
-            StorageBuffer(
+            ve.buffer.StorageBuffer(
                 device=self.device,
                 name="L",
                 memtype=buffType,
@@ -95,7 +96,7 @@ class Loiacono_GPU(ComputeShader):
                 dimensionVals=[len(fprime)],
                 memProperties=memProperties,
             ),
-            StorageBuffer(
+            ve.buffer.StorageBuffer(
                 device=self.device,
                 name="f",
                 memtype=buffType,
@@ -103,7 +104,7 @@ class Loiacono_GPU(ComputeShader):
                 dimensionVals=[len(fprime)],
                 memProperties=memProperties,
             ),
-            StorageBuffer(
+            ve.buffer.StorageBuffer(
                 device=self.device,
                 name="offset",
                 memtype="uint",
@@ -120,7 +121,7 @@ class Loiacono_GPU(ComputeShader):
         ]
         if constantsDict["windowed"]:
             buffers += [
-            StorageBuffer(
+            ve.buffer.StorageBuffer(
                 device=self.device,
                 name="window",
                 memtype=buffType,
@@ -131,19 +132,17 @@ class Loiacono_GPU(ComputeShader):
             ]
         # Create a compute shader
         # Compute Stage: the only stage
-        ComputeShader.__init__(
+        ve.shader.Shader.__init__(
             self,
             sourceFilename=os.path.join(
                 loiacono_home, "shaders/loiacono.c"
-            ),  # can be GLSL or SPIRV
-            parent=self.instance,
+            ), 
             constantsDict=self.constantsDict,
             device=self.device,
             name="loiacono",
-            stage=VK_SHADER_STAGE_COMPUTE_BIT,
+            stage=vk.VK_SHADER_STAGE_COMPUTE_BIT,
             buffers=buffers,
             DEBUG=DEBUG,
-            dim2index=self.dim2index,
             workgroupCount=[
                 int(
                     signalLength * len(fprime)
@@ -154,7 +153,7 @@ class Loiacono_GPU(ComputeShader):
                 1,
                 1,
             ],
-            compressBuffers=True, # flat float arrays, instead of skipping every 4
+            useFence = True
         )
                 
         self.gpuBuffers.f.set(fprime)
@@ -167,17 +166,19 @@ class Loiacono_GPU(ComputeShader):
         vstart = time.time()
         self.run()
         vlen = time.time() - vstart
-        self.absresult = self.gpuBuffers.L
+        self.spectrum = self.gpuBuffers.L
         print("vlen " + str(vlen))
         # return self.sumOut.getAsNumpyArray()
 
-    def feed(self, newData):
+    def feed(self, newData, blocking=True):
         self.gpuBuffers.x.setByIndexStart(self.offset, newData)
         self.offset = (self.offset + len(newData)) % self.signalLength
         self.gpuBuffers.offset.setByIndex(index = 0, data=[self.offset])
-        self.run()
-        self.absresult = self.gpuBuffers.L.getAsNumpyArray()
-        return self.absresult
+        self.run(blocking)
+        
+    def getSpectrum(self):
+        self.spectrum = self.gpuBuffers.L.getAsNumpyArray()
+        return self.spectrum
 
 if __name__ == "__main__":
 
@@ -205,7 +206,7 @@ if __name__ == "__main__":
     linst.debugRun(z)
     
     # begin GPU test
-    instance = Instance(verbose=False)
+    instance = ve.instance.Instance(verbose=True)
     device = instance.getDevice(0)
     linst_gpu = Loiacono_GPU(
         device = device,
@@ -217,14 +218,15 @@ if __name__ == "__main__":
         linst_gpu.debugRun()
     #linst_gpu.dumpMemory()
     readstart = time.time()
-    linst_gpu.absresult = linst_gpu.gpuBuffers.L.getAsNumpyArray()
+    linst_gpu.spectrum = linst_gpu.gpuBuffers.L.getAsNumpyArray()
     print("Readtime " + str(time.time()- readstart))
     
     fig, ((ax1, ax2)) = plt.subplots(1, 2)
-    ax1.plot(linst.fprime*sr, linst_gpu.absresult)
+    ax1.plot(linst.fprime*sr, linst_gpu.spectrum)
     ax1.set_title("GPU Result")
-    ax2.plot(linst.fprime*sr, linst.absresult)
+    ax2.plot(linst.fprime*sr, linst.spectrum)
     ax2.set_title("CPU Result")
     
     plt.show()
     
+    instance.release()

@@ -51,7 +51,7 @@ class Loiacono:
         result = np.dot(self.EIWN, y)
         endTime = time.time()
         # print("transfrom runtime (s) : " + str(endTime-startTime))
-        self.absresult = np.absolute(result)
+        self.spectrum = np.absolute(result)
         
         # self.auto = np.correlate(y,y, mode="valid")
 
@@ -59,8 +59,8 @@ class Loiacono:
         # using tuple unpacking for multiple Axes
         fig, ((ax1)) = plt.subplots(1, 1)
 
-        ax1.plot(self.midiIndices, self.absresult)
-        #ax1.axis(ymin=0, ymax=max(self.absresult) + 1)
+        ax1.plot(self.midiIndices, self.spectrum)
+        #ax1.axis(ymin=0, ymax=max(self.spectrum) + 1)
         # ax4.plot(self.auto)
         # plt.plot(midiIndices, np.absolute(result))
         plt.show()
@@ -73,9 +73,9 @@ class Loiacono:
             self.sr = 48000
             self.run(y)
             if self.lpf is None:
-                self.lpf = self.absresult
+                self.lpf = self.spectrum
             else:
-                self.lpf = inertia * self.lpf + (1 - inertia) * self.absresult
+                self.lpf = inertia * self.lpf + (1 - inertia) * self.spectrum
 
         # using tuple unpacking for multiple Axes
         fig, ((ax1)) = plt.subplots(1, 1)
